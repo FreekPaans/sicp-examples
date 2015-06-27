@@ -1,3 +1,4 @@
+
 #lang racket
 
 (define (make-wire)
@@ -86,7 +87,7 @@
   'ok)
 
 (define (inverter in out)
-  (define inverter-delay 5)
+  (define inverter-delay 2)
   (define (logical-not value) 
     (cond ((eq? value 0) 1)
           ((eq? value 1) 0)
@@ -210,10 +211,13 @@
 (define S (make-wire))
 (define C (make-wire))
 
-(half-adder A B S C)
+(and-gate A B C)
+(set-signal! A 0)
+(set-signal! B 1)
 
 (set-signal! A 1)
-(probe "S" S)
+(set-signal! B 0)
+
 (probe "C" C)
 
 
