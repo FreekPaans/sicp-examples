@@ -25,7 +25,7 @@
 (define (real-part-polar z)
   (* (magnitude-polar z) (cos (angle-polar z))))
 
-(define (imag-part-rect-polar z)
+(define (imag-part-polar z)
   (* (magnitude-polar z) (sin (angle-polar z))))
 
 (define (magnitude-polar z)
@@ -42,9 +42,49 @@
   (cons r a))
 
 
+(define (add-tag tag val)
+  (cons tag val))
 
+(define (is-tag? tag val)
+  (cond ((not (tagged-value? val)) #f)
+        (else (eq? (car val) tag))))
 
+(define (get-tag val)
+  (cond (not (tagged-value? val) (error "not a tagged value " val))
+        (else (car val))))
 
+(define (tagged-value? val)
+  (and (pair? val) (symbol? (car val))))
+
+(define (unwrap-tag val)
+  (cond ((not (tagged-value? val)) (error "not a tagged value " val))
+        (else (cdr val))))
+
+(define (make-from-real-imag x y)
+  (add-tag 'rect (make-from-real-imag-rect x y)))
+
+(define (make-from-mag-ang r a)
+  (add-tag 'polar (make-from-mag-ang-polar r a)))
+
+(define (imag-part z)
+  (cond ((is-tag? 'rect z) (imag-part-rect (unwrap-tag z)))
+        ((is-tag? 'polar z) (imag-part-polar (unwrap-tag z)))
+        (else (error "unknown tag " (get-tag z)))))
+
+(define (real-part z)
+  (cond ((is-tag? 'rect z) (real-part-rect (unwrap-tag z)))
+        ((is-tag? 'polar z) (real-part-polar (unwrap-tag z)))
+        (else (error "unknown tag " (get-tag z)))))
+
+(define (magnitude z)
+  (cond ((is-tag? 'rect z) (magnitude-rect (unwrap-tag z)))
+        ((is-tag? 'polar z) (magnitude-polar (unwrap-tag z)))
+        (else (error "unknown tag " (get-tag z)))))
+
+(define (angle z)
+  (cond ((is-tag? 'rect z) (angle-rect (unwrap-tag z)))
+        ((is-tag? 'polar z) (angle-polar (unwrap-tag z)))
+        (else (error "unknown tag " (get-tag z)))))
 
 (define (add-complex z1 z2)
   (make-from-real-imag (+ (real-part z1) (real-part z2))
