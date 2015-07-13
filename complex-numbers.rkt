@@ -1,5 +1,7 @@
 #lang racket
 
+;begin rectangular
+
 (define (real-part-rect z)
   (car z))
 
@@ -19,8 +21,9 @@
 (define (make-from-mag-ang-rect r a)
   (make-from-real-imag-rect (* r (cos a)) (* r (sin a))))
 
+;end rectangular
 
-
+;begin polar
 
 (define (real-part-polar z)
   (* (magnitude-polar z) (cos (angle-polar z))))
@@ -41,6 +44,9 @@
 (define (make-from-mag-ang-polar r a)
   (cons r a))
 
+;end polar
+
+;begin tagging
 
 (define (add-tag tag val)
   (cons tag val))
@@ -59,6 +65,10 @@
 (define (unwrap-tag val)
   (cond ((not (tagged-value? val)) (error "not a tagged value " val))
         (else (cdr val))))
+
+;end tagging
+
+;complex number dispatch
 
 (define (make-from-real-imag x y)
   (add-tag 'rect (make-from-real-imag-rect x y)))
@@ -86,6 +96,10 @@
         ((is-tag? 'polar z) (angle-polar (unwrap-tag z)))
         (else (error "unknown tag " (get-tag z)))))
 
+;end complex number dispatch
+
+;begin complex number ops
+
 (define (add-complex z1 z2)
   (make-from-real-imag (+ (real-part z1) (real-part z2))
                        (+ (imag-part z1) (imag-part z2))))
@@ -102,3 +116,5 @@
   (make-from-mag-ang (/ (magnitude z1) (magnitude z2))
                      (- (angle z1) (angle z2))))
 
+
+;end complex number ops
