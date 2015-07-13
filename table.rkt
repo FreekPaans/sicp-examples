@@ -18,4 +18,26 @@
     (if (not current-value)
         (cons (cons key value) table)
         (cons (cons key value) (remove-key key table)))))
-        
+
+
+(define (insert-2-dim! key1 key2 value table)
+  (let ((current-value (lookup key1 table)))
+    (if current-value
+        (insert! key1 (insert! key2 value current-value) table)
+        (insert! key1 (insert! key2 value (make-table)) table))))
+
+(define (lookup-2-dim key1 key2 table)
+  (let ((subtable (lookup key1 table)))
+    (if (not subtable)
+        #f
+        (lookup key2 subtable))))
+
+(define (make-mutable-table)
+  (define the-table (make-table))
+  (define (dispatch m)
+    (cond ((eq? m 'lookup) (lambda (key1 key2) (lookup-2-dim key1 key2 the-table)))
+          ((eq? m 'insert!) (lambda (key1 key2 value)
+                              (set! the-table (insert-2-dim! key1 key2 value the-table))
+                              the-table))
+          (else (error "unknown msg " m))))
+  dispatch)
