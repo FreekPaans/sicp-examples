@@ -2,47 +2,68 @@
 
 ;begin rectangular
 
-(define (real-part-rect z)
-  (car z))
+(define (install-rectangular-package tagname)
+  (define (real-part-rect z)
+    (car z))
 
-(define (imag-part-rect z)
-  (cdr z))
+  (define (imag-part-rect z)
+    (cdr z))
 
-(define (magnitude-rect z)
-  (define (square x) (* x x))
-  (sqrt (+ (square (real-part-rect z)) (square (imag-part-rect z)))))
+  (define (magnitude-rect z)
+    (define (square x) (* x x))
+    (sqrt (+ (square (real-part-rect z)) (square (imag-part-rect z)))))
 
-(define (angle-rect z)
-  (atan (imag-part-rect z) (real-part-rect z)))
+  (define (angle-rect z)
+    (atan (imag-part-rect z) (real-part-rect z)))
 
-(define (make-from-real-imag-rect x y)
-  (cons x y))
+  (define (make-from-real-imag-rect x y)
+    (cons x y))
 
-(define (make-from-mag-ang-rect r a)
-  (make-from-real-imag-rect (* r (cos a)) (* r (sin a))))
+  (define (make-from-mag-ang-rect r a)
+    ((make-from-real-imag-rect (* r (cos a)) (* r (sin a)))))
+
+  (install-operation tagname 'real-part real-part-rect)
+  (install-operation tagname 'imag-part imag-part-rect)
+  (install-operation tagname 'angle angle-rect)
+  (install-operation tagname 'magnitude magnitude-rect)
+  (install-operation tagname 'make-from-real-imag make-from-real-imag-rect)
+  (install-operation tagname 'make-from-mag-ang make-from-mag-ang-rect) 
+  'done)
+
+(define rect-tag 'rect)
 
 ;end rectangular
 
 ;begin polar
 
-(define (real-part-polar z)
-  (* (magnitude-polar z) (cos (angle-polar z))))
+(define (install-polar-package tagname)
+  (define (real-part-polar z)
+    (* (magnitude-polar z) (cos (angle-polar z))))
+  
+  (define (imag-part-polar z)
+    (* (magnitude-polar z) (sin (angle-polar z))))
+  
+  (define (magnitude-polar z)
+    (car z))
+  
+  (define (angle-polar z)
+    (cdr z))
+  
+  (define (make-from-real-imag-polar x y)
+    (define (square x) (* x x))
+    (make-from-mag-ang-polar (sqrt (+ (square x) (square y))) (atan y x)))
+  
+  (define (make-from-mag-ang-polar r a)
+    (cons r a))
+  (install-operation tagname 'real-part real-part-polar)
+  (install-operation tagname 'imag-part imag-part-polar)
+  (install-operation tagname 'angle angle-polar)
+  (install-operation tagname 'magnitude magnitude-polar)
+  (install-operation tagname 'make-from-real-imag make-from-real-imag-polar)
+  (install-operation tagname 'make-from-mag-ang make-from-mag-ang-polar) 
+  'done)
 
-(define (imag-part-polar z)
-  (* (magnitude-polar z) (sin (angle-polar z))))
-
-(define (magnitude-polar z)
-  (car z))
-
-(define (angle-polar z)
-  (cdr z))
-
-(define (make-from-real-imag-polar x y)
-  (define (square x) (* x x))
-  (make-from-mag-ang-polar (sqrt (+ (square x) (square y))) (atan y x)))
-
-(define (make-from-mag-ang-polar r a)
-  (cons r a))
+(define polar-tag 'polar)
 
 ;end polar
 
@@ -56,7 +77,7 @@
         (else (eq? (car val) tag))))
 
 (define (get-tag val)
-  (cond (not (tagged-value? val) (error "not a tagged value " val))
+  (cond ((not (tagged-value? val)) (error "not a tagged value " val))
         (else (car val))))
 
 (define (tagged-value? val)
@@ -68,58 +89,70 @@
 
 ;end tagging
 
-;complex number dispatch
+;defaults
 
 (define (make-from-real-imag x y)
-  (add-tag 'rect (make-from-real-imag-rect x y)))
+  (add-tag rect-tag ((find-op-for-tag 'make-from-real-imag rect-tag) x y)))
 
 (define (make-from-mag-ang r a)
-  (add-tag 'polar (make-from-mag-ang-polar r a)))
+  (add-tag polar-tag ((find-op-for-tag 'make-from-mag-ang polar-tag) r a)))
+
+;end defaults
+
+;begin optable
 
 (define ops '())
 
 (define (find-ops-for-tag tagname)
   (define (iter ops)
     (cond ((null? ops) #f)
-          ((eq? (caar ops) tagname) (car ops))
+          ((eq? (caar ops) tagname) (cdar ops))
           (else (iter (cdr ops)))))
   (iter ops))
 
-(define (remove-ops-for-tag tagname ops)
-  (define (iter ops)
-    (cond ((null? ops) '())
-          ((eq? (caar ops) tagname) (cdr ops))
-          (else (cons (car ops) (iter (cdr ops))))))
-  (iter ops))
+(define (find-op-for-tag opname tagname)
+  (define (find-op ops)
+    (cond ((null? ops) #f)
+          ((eq? (caar ops) opname) (cdar ops))
+          (else (find-op (cdr ops)))))
+  (let ((ops (find-ops-for-tag tagname)))
+    (if (not ops) #f
+        (find-op  ops))))
 
 (define (install-operation tag-name op-name procedure)
+  (define (remove-ops-for-tag tagname ops)
+    (define (iter ops)
+      (cond ((null? ops) '())
+            ((eq? (caar ops) tagname) (cdr ops))
+            (else (cons (car ops) (iter (cdr ops))))))
+    (iter ops))
   (let ((ops-for-tag (find-ops-for-tag tag-name)))
     (if ops-for-tag
-        (set! ops (cons (append ops-for-tag (list (cons op-name procedure))) (remove-ops-for-tag tag-name ops)))
+        (set! ops (cons (append (list tag-name) ops-for-tag (list (cons op-name procedure))) (remove-ops-for-tag tag-name ops)))
         (begin
           (set! ops (cons (cons tag-name '()) ops))
           (install-operation tag-name op-name procedure)))))
   
 (define (apply-operation op-name arg)
-  #f)
+  (let ((op (find-op-for-tag op-name (get-tag arg))))
+    (if op (op (unwrap-tag arg))
+        (error "couldn't find op " op-name " for tag " (get-tag arg)))))
+
+;end table
+
+;begin globals
 
 (define (imag-part z)
   (apply-operation 'imag-part z))
 
 (define (real-part z)
-  (cond ((is-tag? 'rect z) (real-part-rect (unwrap-tag z)))
-        ((is-tag? 'polar z) (real-part-polar (unwrap-tag z)))
-        (else (error "unknown tag " (get-tag z)))))
+  (apply-operation 'real-part z))
 
 (define (magnitude z)
-  (cond ((is-tag? 'rect z) (magnitude-rect (unwrap-tag z)))
-        ((is-tag? 'polar z) (magnitude-polar (unwrap-tag z)))
-        (else (error "unknown tag " (get-tag z)))))
+  (apply-operation 'magnitude z))
 
 (define (angle z)
-  (cond ((is-tag? 'rect z) (angle-rect (unwrap-tag z)))
-        ((is-tag? 'polar z) (angle-polar (unwrap-tag z)))
-        (else (error "unknown tag " (get-tag z)))))
+  (apply-operation 'angle z))
 
 ;end complex number dispatch
 
@@ -143,3 +176,6 @@
 
 
 ;end complex number ops
+
+(install-rectangular-package rect-tag)
+(install-polar-package polar-tag)
