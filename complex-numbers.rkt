@@ -76,10 +76,35 @@
 (define (make-from-mag-ang r a)
   (add-tag 'polar (make-from-mag-ang-polar r a)))
 
+(define ops '())
+
+(define (find-ops-for-tag tagname)
+  (define (iter ops)
+    (cond ((null? ops) #f)
+          ((eq? (caar ops) tagname) (car ops))
+          (else (iter (cdr ops)))))
+  (iter ops))
+
+(define (remove-ops-for-tag tagname ops)
+  (define (iter ops)
+    (cond ((null? ops) '())
+          ((eq? (caar ops) tagname) (cdr ops))
+          (else (cons (car ops) (iter (cdr ops))))))
+  (iter ops))
+
+(define (install-operation tag-name op-name procedure)
+  (let ((ops-for-tag (find-ops-for-tag tag-name)))
+    (if ops-for-tag
+        (set! ops (cons (append ops-for-tag (list (cons op-name procedure))) (remove-ops-for-tag tag-name ops)))
+        (begin
+          (set! ops (cons (cons tag-name '()) ops))
+          (install-operation tag-name op-name procedure)))))
+  
+(define (apply-operation op-name arg)
+  #f)
+
 (define (imag-part z)
-  (cond ((is-tag? 'rect z) (imag-part-rect (unwrap-tag z)))
-        ((is-tag? 'polar z) (imag-part-polar (unwrap-tag z)))
-        (else (error "unknown tag " (get-tag z)))))
+  (apply-operation 'imag-part z))
 
 (define (real-part z)
   (cond ((is-tag? 'rect z) (real-part-rect (unwrap-tag z)))
