@@ -5,7 +5,8 @@
 
 (define (lookup key table)
   (let ((value (assoc key table)))
-    (if value (cadr value)
+    (if value
+        (cdr value)
         #f)))
 
 (define (insert! key value table)
@@ -15,6 +16,6 @@
           (else (remove-key key table))))
   (let ((current-value (assoc key table)))
     (if (not current-value)
-        (cons (list key value) table)
-        (cons (list key value) (remove-key key table)))))
+        (cons (cons key value) table)
+        (cons (cons key value) (remove-key key table)))))
         
