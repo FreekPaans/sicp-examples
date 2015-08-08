@@ -32,18 +32,6 @@
 (define (first-exp exps) (car exps))
 (define (remaining-exps exps) (cdr exps))
 
-(define (get-primitive-proc symbol)
-  (cond
-    ((eq? '+ symbol) +)
-    ((eq? '* symbol) *)
-    ((eq? '/ symbol) /)
-    ((eq? '- symbol) -)
-    ((eq? '> symbol) >)
-    ((eq? 'display symbol) display)
-    (else (error "unknown symbol " symbol))))
-(define (is-primitive? symbol)
-  (memq symbol '(+ * / - > display)))
-
 (define (apply-exp operator operands)
   (apply operator operands))
 
@@ -85,17 +73,11 @@
   exp)
 
 (define (env-has-variable? name env)
-  (cond
-    ((is-primitive? name) #t)
-    (else
-     (env 'has-variable? name))))
+  (env 'has-variable? name))
 
 
 (define (env-get-variable-value name env)
-  (cond
-    ((is-primitive? name) (get-primitive-proc name))
-    (else
-     (env 'get-variable name))))
+  (env 'get-variable name))
      
 (define (lookup-variable name env)
   (cond ((env-has-variable? name env) (env-get-variable-value name env))
@@ -142,4 +124,21 @@
 
 (define global-env (make-env))
 
-(eval-exp '(begin (define x 1) (+ 1 x)) global-env)
+(define (get-primitive-proc2 symbol)
+  (cond
+    ((eq? '+ symbol) +)
+    ((eq? '* symbol) *)
+    ((eq? '/ symbol) /)
+    ((eq? '- symbol) -)
+    ((eq? '> symbol) >)
+    ((eq? 'display symbol) display)
+    (else (error "unknown symbol " symbol))))
+
+(global-env 'set-variable! '+ +)
+(global-env 'set-variable! '* *)
+(global-env 'set-variable! '/ /)
+(global-env 'set-variable! '- -)
+(global-env 'set-variable! '> >)
+(global-env 'set-variable! 'display display)
+
+(eval-exp '(begin (define x (+ 1 2)) (display x)) global-env)
