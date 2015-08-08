@@ -1,5 +1,9 @@
 #lang racket
 
+(provide make-table)
+(provide lookup)
+(provide insert!)
+
 (define (make-table)
   '())
 
