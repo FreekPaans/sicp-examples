@@ -3,7 +3,7 @@
 (require "table.rkt")
 
 (define (self-evaluating-exp? exp)
-  (or (number? exp) (symbol? exp) (boolean? exp)))
+  (or (number? exp) (symbol? exp) (boolean? exp) (string? exp)))
 
 (define (operator exp) (car exp))
 (define (operands exp) (cdr exp))
@@ -24,13 +24,15 @@
 (define (apply-exp operator operands)
   (apply (get-primitive-proc operator) operands))
 
+
 (define (eval-if exp)
-  (let ((condition (cadr exp))
-        (on-true (caddr exp))
-        (on-false (cadddr exp)))
-    (if (eval-exp condition)
-        (eval-exp on-true)
-        (eval-exp on-false))))
+  (define (if-predicate exp) (cadr exp))
+  (define (if-consequent exp) (caddr exp))
+  (define (if-alternative exp) (cadddr exp))
+  (define (true? val) (if val #t #f))
+  (if (true? (eval-exp (if-predicate exp)))
+      (eval-exp (if-consequent exp))
+      (eval-exp (if-alternative exp))))
 
 (define (if-exp? exp)
   (and (pair? exp) (eq? (car exp) 'if)))
@@ -42,11 +44,14 @@
   (and (pair? exp) (eq? (car exp) 'begin)))
 
 (define (eval-sequence exp)
-  (define (iter-seq items)
-    (cond ((null? (cdr items)) (eval-exp (car items)))
+  (define (last-exp? exps) (null? (cdr exps)))
+  (define (first-exp exps) (car exps))
+  (define (remaining-exps exps) (cdr exps))
+  (define (iter-seq exps)
+    (cond ((last-exp? exps) (eval-exp (first-exp exps)))
           (else
-           (eval-exp (car items))
-           (iter-seq (cdr items)))))
+           (eval-exp (first-exp exps))
+           (iter-seq (remaining-exps exps)))))
   (iter-seq exp))
 
 (define (begin-actions exp)
@@ -68,4 +73,4 @@
     (else (error "unknown expression " exp))))
   
 
-(eval-exp '(begin (display 1) (display 2) 3))
+(eval-exp '(if (> 4 3) (begin (display "true!") #t) (begin (display "false!!!..") #f)))
