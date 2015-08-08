@@ -20,15 +20,17 @@
         (cdr value)
         no-item)))
 
-(define (insert! key value table)
-  (define (remove-key key table)
+(define (remove-key! key table)
     (cond ((null? table) table)
           ((eq? (caar table) key) (cdr table))
-          (else (remove-key key table))))
+          (else (cons (car table) (remove-key! key (cdr table))))))
+
+(define (insert! key value table)
+  
   (let ((current-value (assoc key table)))
     (if (not current-value)
         (cons (cons key value) table)
-        (cons (cons key value) (remove-key key table)))))
+        (cons (cons key value) (remove-key! key table)))))
 
 
 (define (insert-2-dim! key1 key2 value table)

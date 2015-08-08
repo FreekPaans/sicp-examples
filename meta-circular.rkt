@@ -36,7 +36,8 @@
 
 (define (apply-exp operator operands env)
   (cond
-    ((compound-procedure? operator) (eval-exp (compound-procedure-body operator) env))
+    ((compound-procedure? operator)
+     (eval-sequence (compound-procedure-body operator) env))
     (else
      (apply operator operands))))
 
@@ -117,7 +118,7 @@
   (cadr exp))
 
 (define (lambda-body exp)
-  (caddr exp))
+  (cddr exp))
 
 (define (lambda? exp)
   (and (pair? exp) (eq? (car exp) 'lambda)))
@@ -135,22 +136,7 @@
     (else (error "unknown expression " exp))))
   
 
-;(eval-exp '(begin (define x 3) (+ x 2)))
-;(eval-exp '(define x 3))
-
-;(eval-exp '(+ 1 2))
-
 (define global-env (make-env))
-
-(define (get-primitive-proc2 symbol)
-  (cond
-    ((eq? '+ symbol) +)
-    ((eq? '* symbol) *)
-    ((eq? '/ symbol) /)
-    ((eq? '- symbol) -)
-    ((eq? '> symbol) >)
-    ((eq? 'display symbol) display)
-    (else (error "unknown symbol " symbol))))
 
 (global-env 'set-variable! '+ +)
 (global-env 'set-variable! '* *)
@@ -158,5 +144,16 @@
 (global-env 'set-variable! '- -)
 (global-env 'set-variable! '> >)
 (global-env 'set-variable! 'display display)
+(global-env 'set-variable! 'newline newline)
 
-(eval-exp '(begin (define x (lambda () (+ 1 2))) (x)) global-env)
+(eval-exp
+ '
+ (begin
+   (define y 1)
+   (define x (lambda ()
+               (define y 5)
+               (+ y 2)))
+   (display (x))
+   (newline)
+   (display y))
+ global-env)
