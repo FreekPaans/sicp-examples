@@ -2,7 +2,7 @@
 
 (require "table.rkt")
 
-(define (primitive-exp? exp)
+(define (self-evaluating-exp? exp)
   (or (number? exp) (symbol? exp) (boolean? exp)))
 
 (define (operator exp) (car exp))
@@ -21,8 +21,8 @@
 (define (combination? exp)
   (pair? exp))
 
-(define (apply-exp exp)
-  (apply (get-primitive-proc (eval-exp (operator exp))) (map eval-exp (operands exp))))
+(define (apply-exp operator operands)
+  (apply (get-primitive-proc operator) operands))
 
 (define (eval-if exp)
   (let ((condition (cadr exp))
@@ -41,20 +41,30 @@
 (define (begin-exp? exp)
   (and (pair? exp) (eq? (car exp) 'begin)))
 
-(define (eval-begin exp)
+(define (eval-sequence exp)
   (define (iter-seq items)
     (cond ((null? (cdr items)) (eval-exp (car items)))
           (else
            (eval-exp (car items))
            (iter-seq (cdr items)))))
-  (iter-seq (cdr exp)))
+  (iter-seq exp))
+
+(define (begin-actions exp)
+  (cdr exp))
+
+(define (application? exp)
+  #t)
+
+(define (list-of-values exps)
+  (map eval-exp exps))
 
 (define (eval-exp exp)
   (cond
-    ((primitive-exp? exp) exp)
+    ((self-evaluating-exp? exp) exp)
     ((if-exp? exp) (eval-if exp))
-    ((begin-exp? exp) (eval-begin exp))
-    (#t (apply-exp exp))
+    ((begin-exp? exp) (eval-sequence (begin-actions exp)))
+    ((application? exp)
+     (apply-exp (eval-exp (operator exp)) (list-of-values (operands exp))))
     (else (error "unknown expression " exp))))
   
 
