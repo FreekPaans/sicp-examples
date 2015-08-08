@@ -2,16 +2,23 @@
 
 (provide make-table)
 (provide lookup)
+(provide has-key?)
 (provide insert!)
+
+(define no-item 'no-such-item)
 
 (define (make-table)
   '())
+
+(define (has-key? key table)
+  (let ((value (lookup key table)))
+    (not (eq? value no-item))))
 
 (define (lookup key table)
   (let ((value (assoc key table)))
     (if value
         (cdr value)
-        #f)))
+        no-item)))
 
 (define (insert! key value table)
   (define (remove-key key table)

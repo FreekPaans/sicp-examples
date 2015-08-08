@@ -52,28 +52,28 @@
       (eval-exp (if-consequent exp))
       (eval-exp (if-alternative exp))))
 
-(define (eval-sequence exp)
+(define (eval-sequence exp env)
   (define (iter-seq exps)
-    (cond ((last-exp? exps) (eval-exp (first-exp exps)))
+    (cond ((last-exp? exps) (eval-exp (first-exp exps) env))
           (else
-           (eval-exp (first-exp exps))
+           (eval-exp (first-exp exps) env)
            (iter-seq (remaining-exps exps)))))
   (iter-seq exp))
 
-(define (list-of-values exps)
+(define (list-of-values exps env)
   (cond ((no-operands? exps) '())
         (else
-         (let ((remaining (list-of-values (remaining-operands exps))))
-           (cons (eval-exp (first-operand exps)) remaining )))))
+         (let ((remaining (list-of-values (remaining-operands exps) env)))
+           (cons (eval-exp (first-operand exps) env) remaining )))))
 
 (define (define-name exp)
   (cadr exp))
 
 (define (define-value exp)
-  (cdr exp))
+  (caddr exp))
 
-(define (define-exp name value)
-  (cons name value))
+(define (define-exp name value env)
+  (env 'set-variable! name value))
 
 (define (define? exp)
   (and (pair? exp) (eq? (car exp) 'define)))
@@ -84,21 +84,54 @@
 (define (variable-name exp)
   exp)
 
-(define (lookup-variable name)
-  (cond ((eq? 'x name) 3)
-        ((is-primitive? name) (get-primitive-proc name))
+(define (env-has-variable? name env)
+  (cond
+    ((is-primitive? name) #t)
+    (else
+     (env 'has-variable? name))))
+
+
+(define (env-get-variable-value name env)
+  (cond
+    ((is-primitive? name) (get-primitive-proc name))
+    (else
+     (env 'get-variable name))))
+     
+(define (lookup-variable name env)
+  (cond ((env-has-variable? name env) (env-get-variable-value name env))
         (else
          (error "unknown variable " name))))
 
-(define (eval-exp exp)
+(define (make-env)
+  (define data (make-table))
+
+  (define (has-variable? name)
+    (has-key? name data))
+
+  (define (set-variable! name value)
+    (set! data (insert! name value data)))
+
+  (define (get-variable name)
+    (lookup name data))
+  
+  (define (dispatch msg . args)
+    (cond
+      ((eq? msg 'has-variable?) (has-variable? (car args)))
+      ((eq? msg 'set-variable!) (set-variable! (car args) (cadr args)))
+      ((eq? msg 'get-variable) (get-variable (car args)))
+      (else
+       (error "unknown msg " msg))))
+  dispatch)
+
+(define (eval-exp exp env)
   (cond
     ((self-evaluating-exp? exp) exp)
-    ((variable? exp) (lookup-variable (variable-name exp)))
+    ((variable? exp) (lookup-variable (variable-name exp) env))
     ((if-exp? exp) (eval-if exp))
-    ((begin-exp? exp) (eval-sequence (begin-actions exp)))
-    ((define? exp) (define-exp (define-name exp) (eval-sequence (define-value exp))))
+    ((begin-exp? exp) (eval-sequence (begin-actions exp) env))
+    ((define? exp) (define-exp (define-name exp) (eval-exp (define-value exp) env) env))
     ((application? exp)
-     (apply-exp (eval-exp (operator exp)) (list-of-values (operands exp))))
+     (apply-exp (eval-exp (operator exp) env) (list-of-values (operands exp) env)))
     (else (error "unknown expression " exp))))
   
 
@@ -107,4 +140,6 @@
 
 ;(eval-exp '(+ 1 2))
 
-(eval-exp '(* 1 x))
+(define global-env (make-env))
+
+(eval-exp '(begin (define x 1) (+ 1 x)) global-env)
