@@ -31,9 +31,14 @@
 (define (last-exp? exps) (null? (cdr exps)))
 (define (first-exp exps) (car exps))
 (define (remaining-exps exps) (cdr exps))
+(define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
+(define (compound-procedure-body exp) (caddr exp))
 
-(define (apply-exp operator operands)
-  (apply operator operands))
+(define (apply-exp operator operands env)
+  (cond
+    ((compound-procedure? operator) (eval-exp (compound-procedure-body operator) env))
+    (else
+     (apply operator operands))))
 
 (define (eval-if exp)
   (if (true? (eval-exp (if-predicate exp)))
@@ -60,7 +65,7 @@
 (define (define-value exp)
   (caddr exp))
 
-(define (define-exp name value env)
+(define (eval-define name value env)
   (env 'set-variable! name value))
 
 (define (define? exp)
@@ -105,15 +110,28 @@
        (error "unknown msg " msg))))
   dispatch)
 
+(define (eval-lambda params body env)
+  (list 'lambda params body))
+
+(define (lambda-params exp)
+  (cadr exp))
+
+(define (lambda-body exp)
+  (caddr exp))
+
+(define (lambda? exp)
+  (and (pair? exp) (eq? (car exp) 'lambda)))
+
 (define (eval-exp exp env)
   (cond
     ((self-evaluating-exp? exp) exp)
     ((variable? exp) (lookup-variable (variable-name exp) env))
     ((if-exp? exp) (eval-if exp))
     ((begin-exp? exp) (eval-sequence (begin-actions exp) env))
-    ((define? exp) (define-exp (define-name exp) (eval-exp (define-value exp) env) env))
+    ((define? exp) (eval-define (define-name exp) (eval-exp (define-value exp) env) env))
+    ((lambda? exp) (eval-lambda (lambda-params exp) (lambda-body exp) env))
     ((application? exp)
-     (apply-exp (eval-exp (operator exp) env) (list-of-values (operands exp) env)))
+     (apply-exp (eval-exp (operator exp) env) (list-of-values (operands exp) env) env ) )
     (else (error "unknown expression " exp))))
   
 
@@ -141,4 +159,4 @@
 (global-env 'set-variable! '> >)
 (global-env 'set-variable! 'display display)
 
-(eval-exp '(begin (define x (+ 1 2)) (display x)) global-env)
+(eval-exp '(begin (define x (lambda () (+ 1 2))) (x)) global-env)
