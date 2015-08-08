@@ -3,7 +3,7 @@
 (require "table.rkt")
 
 (define (self-evaluating-exp? exp)
-  (or (number? exp) (symbol? exp) (boolean? exp) (string? exp)))
+  (or (number? exp) (boolean? exp) (string? exp)))
 (define (operator exp) (car exp))
 (define (operands exp) (cdr exp))
 (define (combination? exp)
@@ -41,9 +41,11 @@
     ((eq? '> symbol) >)
     ((eq? 'display symbol) display)
     (else (error "unknown symbol " symbol))))
+(define (is-primitive? symbol)
+  (memq symbol '(+ * / - > display)))
 
 (define (apply-exp operator operands)
-  (apply (get-primitive-proc operator) operands))
+  (apply operator operands))
 
 (define (eval-if exp)
   (if (true? (eval-exp (if-predicate exp)))
@@ -64,16 +66,45 @@
          (let ((remaining (list-of-values (remaining-operands exps))))
            (cons (eval-exp (first-operand exps)) remaining )))))
 
+(define (define-name exp)
+  (cadr exp))
+
+(define (define-value exp)
+  (cdr exp))
+
+(define (define-exp name value)
+  (cons name value))
+
+(define (define? exp)
+  (and (pair? exp) (eq? (car exp) 'define)))
+
+(define (variable? exp)
+  (symbol? exp))
+
+(define (variable-name exp)
+  exp)
+
+(define (lookup-variable name)
+  (cond ((eq? 'x name) 3)
+        ((is-primitive? name) (get-primitive-proc name))
+        (else
+         (error "unknown variable " name))))
+
 (define (eval-exp exp)
   (cond
     ((self-evaluating-exp? exp) exp)
+    ((variable? exp) (lookup-variable (variable-name exp)))
     ((if-exp? exp) (eval-if exp))
     ((begin-exp? exp) (eval-sequence (begin-actions exp)))
+    ((define? exp) (define-exp (define-name exp) (eval-sequence (define-value exp))))
     ((application? exp)
      (apply-exp (eval-exp (operator exp)) (list-of-values (operands exp))))
     (else (error "unknown expression " exp))))
   
 
-(eval-exp '(+  1 2))
+;(eval-exp '(begin (define x 3) (+ x 2)))
+;(eval-exp '(define x 3))
+
 ;(eval-exp '(+ 1 2))
 
+(eval-exp '(* 1 x))
