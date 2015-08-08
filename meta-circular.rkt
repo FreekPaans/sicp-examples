@@ -60,8 +60,18 @@
 (define (application? exp)
   #t)
 
+(define (first-operand exps)
+  (car exps))
+(define (no-operands? exps)
+  (null? exps))
+(define (remaining-operands exps)
+  (cdr exps))
+
 (define (list-of-values exps)
-  (map eval-exp exps))
+  (cond ((no-operands? exps) '())
+        (else
+         (let ((remaining (list-of-values (remaining-operands exps))))
+           (cons (eval-exp (first-operand exps)) remaining )))))
 
 (define (eval-exp exp)
   (cond
@@ -73,4 +83,6 @@
     (else (error "unknown expression " exp))))
   
 
-(eval-exp '(if (> 4 3) (begin (display "true!") #t) (begin (display "false!!!..") #f)))
+(eval-exp '(+ (begin (display "1") 1) (begin (display "2") 2)))
+;(eval-exp '(+ 1 2))
+
