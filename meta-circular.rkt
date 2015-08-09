@@ -31,10 +31,6 @@
 (define (last-exp? exps) (null? (cdr exps)))
 (define (first-exp exps) (car exps))
 (define (remaining-exps exps) (cdr exps))
-(define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
-(define (compound-procedure-body exp) (caddr exp))
-(define (compound-procedure-env exp) (cadddr exp))
-(define (compound-procedure-param-names exp) (cadr exp))
 (define (define-name exp)
   (cadr exp))
 (define (define-value exp)
@@ -51,6 +47,14 @@
   (cddr exp))
 (define (lambda? exp)
   (and (pair? exp) (eq? (car exp) 'lambda)))
+
+(define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
+(define (compound-procedure-body exp) (caddr exp))
+(define (compound-procedure-env exp) (cadddr exp))
+(define (compound-procedure-param-names exp) (cadr exp))
+(define (make-compound-procedure params body env)
+  (list 'lambda params body env))
+
 
 (define (apply-exp operator operands env)
   (cond
@@ -128,9 +132,7 @@
   dispatch)
 
 (define (eval-lambda params body env)
-  (list 'lambda params body env))
-
-
+  (make-compound-procedure params body  env))
 
 (define (eval-exp exp env)
   (cond
