@@ -3,7 +3,7 @@
 (require "env.rkt")
 
 (define (self-evaluating-exp? exp)
-  (or (number? exp) (boolean? exp) (string? exp)))
+  (or (number? exp) (string? exp)))
 (define (operator exp) (car exp))
 (define (operands exp) (cdr exp))
 (define (combination? exp)
@@ -17,7 +17,7 @@
 (define (begin-actions exp)
   (cdr exp))
 (define (application? exp)
-  #t)
+  (pair? exp))
 (define (first-operand exps)
   (car exps))
 (define (no-operands? exps)
@@ -128,10 +128,9 @@
 (eval-exp
  '
  (begin
-   (define fib
+   (define f
      (lambda (n)
-       (if (= n 1)
-           1
-           (* n (fib (- n 1))))))
-   (fib 5))
+       (if (= n 1) 1
+           (* n (f (- n 1))))))
+   (f 5))
  global-env)
