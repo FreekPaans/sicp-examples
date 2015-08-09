@@ -63,24 +63,29 @@
 (define (make-if predicate consequence alternative)
   (list 'if predicate consequence alternative))
 (define (cond-clause-predicate clause) (car clause))
-(define (cond-clause-action clause) (cadr clause))
+(define (cond-clause-action clause) (cdr clause))
 (define (cond-clauses-last-clause? clauses) (null? (cdr clauses)))
+(define (cond-clause-else? clause) (eq? (cond-clause-predicate clause) 'else))
+
+(define (make-begin exp)
+  (cons 'begin exp))
+
+(define (sequence->exp exp)
+  (make-begin exp))
 
 (define (cond->if exp)
-  (define (cond-clauses->if clauses)
-    (let ((clause (cond-clauses-first-clause clauses)))
-      (if (cond-clauses-last-clause? clauses)
-        (if (eq? (cond-clause-predicate clause) 'else)
-            (cond-clause-action clause)
-            (make-if (cond-clause-predicate clause) (cond-clause-action clause)
-                   'false))
-        (if (eq? (cond-clause-predicate clause) 'else)
-            (error "else can only be the last clause")
-            (make-if (cond-clause-predicate clause) (cond-clause-action clause)
-                   (cond-clauses->if (cond-clauses-remaining-clauses clauses)))))))
-        
-          
-  (cond-clauses->if (cond-clauses exp)))
+  (define (expand-clauses clauses)
+    (let ((clause (cond-clauses-first-clause clauses))
+          (rest (cond-clauses-remaining-clauses clauses)))
+      (if (cond-clause-else? clause)
+          (if (null? rest)
+              (sequence->exp (cond-clause-action clause))
+              (error "else can only be the last clause"))
+          (make-if
+           (cond-clause-predicate clause)
+           (sequence->exp (cond-clause-action clause))
+           (expand-clauses rest)))))
+  (expand-clauses (cond-clauses exp)))
 
 (define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
 (define (compound-procedure-body exp) (caddr exp))
@@ -176,7 +181,7 @@
 (eval-exp
  '
  (begin
-   (cond ((> 2 3) (display "2>3"))
-         ((> 5 3) (display "3>4"))
-         (else (display "2<=3"))))
+   (cond ((> 2 3) (display "2>3") (newline) (display "yeah"))
+         ((> 5 3) (display "3>4") (newline) (display "yeah"))
+         (else (display "2<=3") (newline) (display "yeah"))))
  global-env)
