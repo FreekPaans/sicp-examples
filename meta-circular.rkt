@@ -62,19 +62,28 @@
 (define (make-compound-procedure params body env)
   (list 'lambda params body env))
 
-(define (apply-exp operator operands env)
+(define (extend-environment param-names arguments env)
+  (define new-env (make-env env))
+  (if (not (= (length param-names) (length arguments)))
+      (error "arity mismatch, expected: " (length param-names) "given:" (length arguments))
+      'else)
+  (define (iter-bind-params params arguments)
+    (cond ((null? params) 'done)
+          (else
+           (new-env 'define-variable! (car params) (car arguments))
+           (iter-bind-params (cdr params) (cdr arguments)))))
+  (iter-bind-params param-names arguments)
+  new-env)
+
+(define (apply-exp procedure arguments env)
   (cond
-    ((compound-procedure? operator)
-     (let ((new-env (make-env (compound-procedure-env operator)))
-           (param-names (compound-procedure-param-names operator)))
-       (if (not (= (length param-names) (length operands))) (error "arity mismatch, expected: " (length param-names) "given:" (length operands)) 'else)
-       (define (iter-bind-params params operands)
-         (cond ((null? params) 'done)
-               (else
-                (new-env 'define-variable! (car params) (car operands))
-                (iter-bind-params (cdr params) (cdr operands)))))
-       (iter-bind-params param-names operands)
-       (eval-sequence (compound-procedure-body operator) new-env)))
+    ((compound-procedure? procedure)
+     (eval-sequence
+      (compound-procedure-body procedure)
+      (extend-environment
+       (compound-procedure-param-names procedure)
+       arguments
+       (compound-procedure-env procedure))))
     (else
      (apply operator operands))))
 
