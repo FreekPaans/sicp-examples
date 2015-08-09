@@ -54,6 +54,25 @@
   (cadr exp))
 (define (set!-val exp)
   (caddr exp))
+(define (cond-exp? exp)
+  (and (pair? exp) (eq? (car exp) 'cond)))
+
+(define (cond-clauses exp) (cdr exp))
+(define (cond-clauses-remaining-clauses clauses) (cdr clauses))
+(define (cond-clauses-first-clause clauses) (car clauses))
+(define (make-if predicate consequence alternative)
+  (list 'if predicate consequence alternative))
+(define (cond-clause-predicate clause) (car clause))
+(define (cond-clause-action clause) (cadr clause))
+(define (cond-clauses-last-clause? clauses) (null? clauses))
+
+(define (cond->if exp)
+  (define (cond-clauses->if clauses)
+    (if (cond-clauses-last-clause? clauses) 'false
+        (let ((clause (cond-clauses-first-clause clauses)))
+          (make-if (cond-clause-predicate clause) (cond-clause-action clause)
+                   (cond-clauses->if (cond-clauses-remaining-clauses clauses))))))
+  (cond-clauses->if (cond-clauses exp)))
 
 (define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
 (define (compound-procedure-body exp) (caddr exp))
@@ -85,7 +104,7 @@
        arguments
        (compound-procedure-env procedure))))
     (else
-     (apply operator operands))))
+     (apply procedure arguments))))
 
 (define (eval-if exp env)
   (if (true? (eval-exp (if-predicate exp) env))
@@ -128,6 +147,7 @@
     ((define? exp) (eval-define (define-name exp) (eval-exp (define-value exp) env) env))
     ((lambda? exp) (eval-lambda (lambda-params exp) (lambda-body exp) env))
     ((set!-exp? exp) (eval-set! (set!-dest exp) (eval-exp (set!-val exp) env) env))
+    ((cond-exp? exp) (eval-exp (cond->if exp) env))
     ((application? exp)
      (apply-exp (eval-exp (operator exp) env) (list-of-values (operands exp) env) env ) )
     (else (error "unknown expression " exp))))
@@ -143,14 +163,11 @@
 (global-env 'define-variable! '= =)
 (global-env 'define-variable! 'display display)
 (global-env 'define-variable! 'newline newline)
+(global-env 'define-variable! 'false #f)
 
 (eval-exp
  '
  (begin
-   (define x 1)
-   (define f
-     (lambda (y)
-       (set! x y)))
-   (f 5)
-   x)
+   (cond ((> 2 3) (display "2>3"))
+         (else (display "2<=3"))))
  global-env)
