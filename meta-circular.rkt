@@ -33,11 +33,30 @@
 (define (remaining-exps exps) (cdr exps))
 (define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
 (define (compound-procedure-body exp) (caddr exp))
+(define (compound-procedure-env exp) (cadddr exp))
+(define (define-name exp)
+  (cadr exp))
+(define (define-value exp)
+  (caddr exp))
+(define (define? exp)
+  (and (pair? exp) (eq? (car exp) 'define)))
+(define (variable? exp)
+  (symbol? exp))
+(define (variable-name exp)
+  exp)
+(define (lambda-params exp)
+  (cadr exp))
+(define (lambda-body exp)
+  (cddr exp))
+(define (lambda? exp)
+  (and (pair? exp) (eq? (car exp) 'lambda)))
 
 (define (apply-exp operator operands env)
   (cond
     ((compound-procedure? operator)
-     (eval-sequence (compound-procedure-body operator) env))
+     (begin
+       (define new-env (make-env (compound-procedure-env operator)))
+       (eval-sequence (compound-procedure-body operator) new-env)))
     (else
      (apply operator operands))))
 
@@ -60,27 +79,11 @@
          (let ((remaining (list-of-values (remaining-operands exps) env)))
            (cons (eval-exp (first-operand exps) env) remaining )))))
 
-(define (define-name exp)
-  (cadr exp))
-
-(define (define-value exp)
-  (caddr exp))
-
 (define (eval-define name value env)
   (env 'set-variable! name value))
 
-(define (define? exp)
-  (and (pair? exp) (eq? (car exp) 'define)))
-
-(define (variable? exp)
-  (symbol? exp))
-
-(define (variable-name exp)
-  exp)
-
 (define (env-has-variable? name env)
   (env 'has-variable? name))
-
 
 (define (env-get-variable-value name env)
   (env 'get-variable name))
@@ -90,17 +93,22 @@
         (else
          (error "unknown variable " name))))
 
-(define (make-env)
+(define (make-env parent-env)
   (define data (make-table))
 
   (define (has-variable? name)
-    (has-key? name data))
+    (or
+     (has-key? name data)
+     (if (not (null? parent-env)) (parent-env 'has-variable? name) #f)))
+     
 
   (define (set-variable! name value)
     (set! data (insert! name value data)))
 
   (define (get-variable name)
-    (lookup name data))
+    (if (has-key? name data)
+        (lookup name data)
+        (parent-env 'get-variable name)))
   
   (define (dispatch msg . args)
     (cond
@@ -112,16 +120,9 @@
   dispatch)
 
 (define (eval-lambda params body env)
-  (list 'lambda params body))
+  (list 'lambda params body env))
 
-(define (lambda-params exp)
-  (cadr exp))
 
-(define (lambda-body exp)
-  (cddr exp))
-
-(define (lambda? exp)
-  (and (pair? exp) (eq? (car exp) 'lambda)))
 
 (define (eval-exp exp env)
   (cond
@@ -136,7 +137,7 @@
     (else (error "unknown expression " exp))))
   
 
-(define global-env (make-env))
+(define global-env (make-env null))
 
 (global-env 'set-variable! '+ +)
 (global-env 'set-variable! '* *)
