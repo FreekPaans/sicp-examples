@@ -48,13 +48,19 @@
 (define (lambda? exp)
   (and (pair? exp) (eq? (car exp) 'lambda)))
 
+(define (set!-exp? exp)
+  (and (pair? exp) (eq? (car exp) 'set!)))
+(define (set!-dest exp)
+  (cadr exp))
+(define (set!-val exp)
+  (caddr exp))
+
 (define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
 (define (compound-procedure-body exp) (caddr exp))
 (define (compound-procedure-env exp) (cadddr exp))
 (define (compound-procedure-param-names exp) (cadr exp))
 (define (make-compound-procedure params body env)
   (list 'lambda params body env))
-
 
 (define (apply-exp operator operands env)
   (cond
@@ -65,7 +71,7 @@
        (define (iter-bind-params params operands)
          (cond ((null? params) 'done)
                (else
-                (new-env 'set-variable! (car params) (car operands))
+                (new-env 'define-variable! (car params) (car operands))
                 (iter-bind-params (cdr params) (cdr operands)))))
        (iter-bind-params param-names operands)
        (eval-sequence (compound-procedure-body operator) new-env)))
@@ -99,7 +105,10 @@
   (make-compound-procedure params body  env))
 
 (define (eval-define name value env)
-  (env 'set-variable! name value))
+  (env 'define-variable! name value))
+
+(define (eval-set! variable-name value env)
+  (env 'set-variable! variable-name value env))
 
 (define (eval-exp exp env)
   (cond
@@ -109,6 +118,7 @@
     ((begin-exp? exp) (eval-sequence (begin-actions exp) env))
     ((define? exp) (eval-define (define-name exp) (eval-exp (define-value exp) env) env))
     ((lambda? exp) (eval-lambda (lambda-params exp) (lambda-body exp) env))
+    ((set!-exp? exp) (eval-set! (set!-dest exp) (eval-exp (set!-val exp) env) env))
     ((application? exp)
      (apply-exp (eval-exp (operator exp) env) (list-of-values (operands exp) env) env ) )
     (else (error "unknown expression " exp))))
@@ -116,21 +126,22 @@
 
 (define global-env (make-env null))
 
-(global-env 'set-variable! '+ +)
-(global-env 'set-variable! '* *)
-(global-env 'set-variable! '/ /)
-(global-env 'set-variable! '- -)
-(global-env 'set-variable! '> >)
-(global-env 'set-variable! '= =)
-(global-env 'set-variable! 'display display)
-(global-env 'set-variable! 'newline newline)
+(global-env 'define-variable! '+ +)
+(global-env 'define-variable! '* *)
+(global-env 'define-variable! '/ /)
+(global-env 'define-variable! '- -)
+(global-env 'define-variable! '> >)
+(global-env 'define-variable! '= =)
+(global-env 'define-variable! 'display display)
+(global-env 'define-variable! 'newline newline)
 
 (eval-exp
  '
  (begin
+   (define x 1)
    (define f
-     (lambda (n)
-       (if (= n 1) 1
-           (* n (f (- n 1))))))
-   (f 5))
+     (lambda (y)
+       (set! x y)))
+   (f 5)
+   x)
  global-env)
