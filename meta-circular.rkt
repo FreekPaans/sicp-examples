@@ -64,14 +64,22 @@
   (list 'if predicate consequence alternative))
 (define (cond-clause-predicate clause) (car clause))
 (define (cond-clause-action clause) (cadr clause))
-(define (cond-clauses-last-clause? clauses) (null? clauses))
+(define (cond-clauses-last-clause? clauses) (null? (cdr clauses)))
 
 (define (cond->if exp)
   (define (cond-clauses->if clauses)
-    (if (cond-clauses-last-clause? clauses) 'false
-        (let ((clause (cond-clauses-first-clause clauses)))
-          (make-if (cond-clause-predicate clause) (cond-clause-action clause)
-                   (cond-clauses->if (cond-clauses-remaining-clauses clauses))))))
+    (let ((clause (cond-clauses-first-clause clauses)))
+      (if (cond-clauses-last-clause? clauses)
+        (if (eq? (cond-clause-predicate clause) 'else)
+            (cond-clause-action clause)
+            (make-if (cond-clause-predicate clause) (cond-clause-action clause)
+                   'false))
+        (if (eq? (cond-clause-predicate clause) 'else)
+            (error "else can only be the last clause")
+            (make-if (cond-clause-predicate clause) (cond-clause-action clause)
+                   (cond-clauses->if (cond-clauses-remaining-clauses clauses)))))))
+        
+          
   (cond-clauses->if (cond-clauses exp)))
 
 (define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
@@ -169,5 +177,6 @@
  '
  (begin
    (cond ((> 2 3) (display "2>3"))
+         ((> 5 3) (display "3>4"))
          (else (display "2<=3"))))
  global-env)
