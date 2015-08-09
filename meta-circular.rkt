@@ -34,6 +34,7 @@
 (define (compound-procedure? exp) (and (pair? exp) (eq? (car exp) 'lambda)))
 (define (compound-procedure-body exp) (caddr exp))
 (define (compound-procedure-env exp) (cadddr exp))
+(define (compound-procedure-param-names exp) (cadr exp))
 (define (define-name exp)
   (cadr exp))
 (define (define-value exp)
@@ -54,8 +55,15 @@
 (define (apply-exp operator operands env)
   (cond
     ((compound-procedure? operator)
-     (begin
-       (define new-env (make-env (compound-procedure-env operator)))
+     (let ((new-env (make-env (compound-procedure-env operator)))
+           (param-names (compound-procedure-param-names operator)))
+       (if (not (= (length param-names) (length operands))) (error "arity mismatch, expected: " (length param-names) "given:" (length operands)) 'else)
+       (define (iter-bind-params params operands)
+         (cond ((null? params) 'done)
+               (else
+                (new-env 'set-variable! (car params) (car operands))
+                (iter-bind-params (cdr params) (cdr operands)))))
+       (iter-bind-params param-names operands)
        (eval-sequence (compound-procedure-body operator) new-env)))
     (else
      (apply operator operands))))
@@ -150,11 +158,8 @@
 (eval-exp
  '
  (begin
-   (define y 1)
-   (define x (lambda ()
-               (define y 5)
-               (+ y 2)))
-   (display (x))
-   (newline)
-   (display y))
+   (define x 5)
+   (define f (lambda (x) (* x 2)))
+   (display (f 2))
+   x)
  global-env)
