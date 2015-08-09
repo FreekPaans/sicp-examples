@@ -68,10 +68,10 @@
     (else
      (apply operator operands))))
 
-(define (eval-if exp)
-  (if (true? (eval-exp (if-predicate exp)))
-      (eval-exp (if-consequent exp))
-      (eval-exp (if-alternative exp))))
+(define (eval-if exp env)
+  (if (true? (eval-exp (if-predicate exp) env))
+      (eval-exp (if-consequent exp) env)
+      (eval-exp (if-alternative exp) env)))
 
 (define (eval-sequence exp env)
   (define (iter-seq exps)
@@ -136,7 +136,7 @@
   (cond
     ((self-evaluating-exp? exp) exp)
     ((variable? exp) (lookup-variable (variable-name exp) env))
-    ((if-exp? exp) (eval-if exp))
+    ((if-exp? exp) (eval-if exp env))
     ((begin-exp? exp) (eval-sequence (begin-actions exp) env))
     ((define? exp) (eval-define (define-name exp) (eval-exp (define-value exp) env) env))
     ((lambda? exp) (eval-lambda (lambda-params exp) (lambda-body exp) env))
@@ -152,14 +152,17 @@
 (global-env 'set-variable! '/ /)
 (global-env 'set-variable! '- -)
 (global-env 'set-variable! '> >)
+(global-env 'set-variable! '= =)
 (global-env 'set-variable! 'display display)
 (global-env 'set-variable! 'newline newline)
 
 (eval-exp
  '
  (begin
-   (define x 5)
-   (define f (lambda (x) (* x 2)))
-   (display (f 2))
-   x)
+   (define fib
+     (lambda (n)
+       (if (= n 1)
+           1
+           (* n (fib (- n 1))))))
+   (fib 5))
  global-env)
