@@ -1,6 +1,6 @@
 #lang racket
 
-(require "table.rkt")
+(require "env.rkt")
 
 (define (self-evaluating-exp? exp)
   (or (number? exp) (boolean? exp) (string? exp)))
@@ -90,49 +90,16 @@
         (else
          (let ((remaining (list-of-values (remaining-operands exps) env)))
            (cons (eval-exp (first-operand exps) env) remaining )))))
-
-(define (eval-define name value env)
-  (env 'set-variable! name value))
-
-(define (env-has-variable? name env)
-  (env 'has-variable? name))
-
-(define (env-get-variable-value name env)
-  (env 'get-variable name))
      
 (define (lookup-variable name env)
   (cond ((env-has-variable? name env) (env-get-variable-value name env))
         (else
          (error "unknown variable " name))))
-
-(define (make-env parent-env)
-  (define data (make-table))
-
-  (define (has-variable? name)
-    (or
-     (has-key? name data)
-     (if (not (null? parent-env)) (parent-env 'has-variable? name) #f)))
-     
-
-  (define (set-variable! name value)
-    (set! data (insert! name value data)))
-
-  (define (get-variable name)
-    (if (has-key? name data)
-        (lookup name data)
-        (parent-env 'get-variable name)))
-  
-  (define (dispatch msg . args)
-    (cond
-      ((eq? msg 'has-variable?) (has-variable? (car args)))
-      ((eq? msg 'set-variable!) (set-variable! (car args) (cadr args)))
-      ((eq? msg 'get-variable) (get-variable (car args)))
-      (else
-       (error "unknown msg " msg))))
-  dispatch)
-
 (define (eval-lambda params body env)
   (make-compound-procedure params body  env))
+
+(define (eval-define name value env)
+  (env 'set-variable! name value))
 
 (define (eval-exp exp env)
   (cond
